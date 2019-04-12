@@ -6,7 +6,7 @@ metadata:
     name: influxdb
 spec:
   ports:
-    - { name: "influxdb", port: 8086, targetPort: 8086 }
+    - { name: "influxdb", port: 80, targetPort: 8086 }
   selector:
     name: influxdb
   sessionAffinity: None
@@ -38,7 +38,6 @@ spec:
       containers:
         - name: influxdb
           image: influxdb:1.7-alpine
-          imagePullPolicy: Always
           env:
             - { name: "INFLUXDB_USER",                         valueFrom: { secretKeyRef: { name: "influxdb-secret", key: "username"                } } }
             - { name: "INFLUXDB_USER_PASSWORD",                valueFrom: { secretKeyRef: { name: "influxdb-secret", key: "user-password"           } } }
