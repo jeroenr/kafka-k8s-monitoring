@@ -1,0 +1,21 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: kafka-load-generator
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: kafka-load-generator
+            image: solsson/kafkacat-curl
+            args: [
+              '-c',
+              'COUNT=$((RANDOM * 200 / 32768)); curl -k -s "https://api.mockaroo.com/api/d5a195e0?key=ff7856d0&count=$COUNT" | kafkacat -P -b kafka:9092 -t "$TOPIC" -p 0 -c "$COUNT"'
+            ]
+            command: ["/bin/bash"]
+            env:
+            - { name: TOPIC,                      value: "orders" }
+          restartPolicy: OnFailure
