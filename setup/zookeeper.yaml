@@ -17,7 +17,7 @@ kind: PodDisruptionBudget
 metadata:
   name: zookeeper
 spec:
-  minAvailable: 1
+  minAvailable: 2
   selector:
     matchLabels:
       app: zookeeper
