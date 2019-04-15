@@ -18,7 +18,6 @@ metadata:
   name: influxdb-secret
 type: Opaque
 data:
-  username: YWRtaW4=
   user-password: MWYyZDFlMmU2N2Rm
   admin-password: Vabeguto0D7NJO23
 ---
@@ -39,7 +38,7 @@ spec:
         - name: influxdb
           image: influxdb:1.7-alpine
           env:
-            - { name: "INFLUXDB_USER",                         valueFrom: { secretKeyRef: { name: "influxdb-secret", key: "username"                } } }
+            - { name: "INFLUXDB_USER",                         value: "jeroen"                                                                          } 
             - { name: "INFLUXDB_USER_PASSWORD",                valueFrom: { secretKeyRef: { name: "influxdb-secret", key: "user-password"           } } }
             - { name: "INFLUXDB_DB"           ,                value: "kafka"                                                                           }
             - { name: "INFLUXDB_ADMIN_USER",                   value: "admin"                                                                           }
