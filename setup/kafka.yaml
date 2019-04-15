@@ -42,6 +42,21 @@ spec:
       labels:
         app: kafka
     spec:
+      initContainers:
+      - name: jmxtrans-init
+        image: realguess/jq:1.4
+        volumeMounts:
+        - name: kafka-jmxtrans-config
+          mountPath: /metrics-input/metrics.json
+          subPath: metrics.json
+        - name: jmxtrans-input
+          mountPath: /jmxtrans-input
+        command:
+        - sh
+        - -c
+        - >-
+          jq -s -c '{"servers": [{"port": "${kafkaJmxPort}","host":"localhost","alias":"${alias}", "queries":map( {"outputWriters": [{"@class":"com.googlecode.jmxtrans.model.output.InfluxDbWriterFactory","url":"${influxUrl}","database":"${influxDatabase}","retentionPolicy":"${retentionPolicy}","createDatabase":false,"username":"${influxUser}","password":"${influxPass}"}], "obj": .obj, "attr": .attr, "resultAlias": .resultAlias})}]}'
+          /metrics-input/metrics.json > /jmxtrans-input/kafka.json
       containers:
         - name: kafka
           image: wurstmeister/kafka:2.12-2.2.0
@@ -68,7 +83,28 @@ spec:
             - {name: data,    mountPath: /var/lib/kafka }
             - {name: tmp,    mountPath: /tmp }
             - {name: vartmp, mountPath: /var/tmp }
+        - name: "jmxtrans"
+          image: "jmxtrans/jmxtrans"
+          command: ["/boot.sh"]
+          env:
+          - { name: "POD_NAME",                  valueFrom: { fieldRef: { fieldPath: "metadata.name"                        }}}
+          - { name: "HOST_NAME",                 valueFrom: { fieldRef: { fieldPath: "spec.nodeName"                        }}}
+          - { name: "KAFKA_JMX_PORT",            value: "9010"                                                                }
+          - { name: "INFLUXDB_DATABASE",         value: "kafka"                                                               }
+          - { name: "INFLUXDB_HOST",             value: "http://influxdb:8086"                                                }
+          - { name: "INFLUXDB_USER",             value: "jeroen"                                                              }
+          - { name: "INFLUXDB_PASSWORD",         valueFrom: { secretKeyRef: { name: influxdb-secret, key: influxdb-password }}}
+          volumeMounts:
+            - name: jmxtrans-input
+              mountPath: /var/lib/jmxtrans
+              readOnly: true
+            - name: kafka-jmxtrans-config
+              mountPath: /boot.sh
+              subPath: boot.sh
+              readOnly: true
       volumes:
         - { name: tmp,    emptyDir: {} }
         - { name: vartmp, emptyDir: {} }
         - { name: data, emptyDir: {} }
+        - { name: jmxtrans-input,   emptyDir: {} }
+        - { name: kafka-jmxtrans-config, configMap: { name: kafka-jmxtrans-config, defaultMode: 0744 } }
