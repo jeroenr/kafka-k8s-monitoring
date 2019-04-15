@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-consumer
+spec:
+  template:
+    metadata:
+      labels:
+        name: orders-consumer
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: orders-consumer
+          image: jeroenrosenberg/order-consumer:0.1.0-SNAPSHOT
+          imagePullPolicy: Always
+          resources:
+            requests: { memory: "300Mi" }
+            limits:   { memory: "300Mi" }
+  replicas: 1
+  selector:
+    matchLabels:
+      name: orders-consumer
