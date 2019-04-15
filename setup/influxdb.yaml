@@ -44,7 +44,6 @@ spec:
             - { name: "INFLUXDB_ADMIN_USER",                   value: "admin"                                                                           }
             - { name: "INFLUXDB_ADMIN_PASSWORD",               valueFrom: { secretKeyRef: { name: "influxdb-secret", key: "admin-password"          } } }
             - { name: "INFLUXDB_META_DIR",                     value: "/influxdbdata/meta"                                                              }
-            - { name: "INFLUXDB_META_RETENTION_AUTOCREATE",    value: "false"                                                                           }
             - { name: "INFLUXDB_DATA_DIR",                     value: "/influxdbdata/data"                                                              }
             - { name: "INFLUXDB_DATA_WAL_DIR",                 value: "/influxdbdata/wal"                                                               }
             - { name: "INFLUXDB_REPORTING_DISABLED",           value: "true"                                                                            }
@@ -56,7 +55,6 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 8086
-            initialDelaySeconds: 30
           volumeMounts:
             - { name: tmp,           mountPath: "/tmp" }
             - { name: vartmp,        mountPath: "/var/tmp" }

@@ -58,13 +58,10 @@ spec:
             - { containerPort: 2181,  protocol: TCP }
             - { containerPort: 2888,  protocol: TCP }
             - { containerPort: 3888,  protocol: TCP }
-          # For now we're using the process itself for liveness.
           readinessProbe:
             tcpSocket:
               port: 2181
-            initialDelaySeconds: 5
           volumeMounts:
-            # This binds to PVCs of the form: pvc-zookeeper-0, pvc-zookeeper-1, etc
             - {name: data,    mountPath: /var/lib/zookeeper }
             - {name: tmp,    mountPath: /tmp }
             - {name: vartmp, mountPath: /var/tmp }

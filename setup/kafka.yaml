@@ -55,7 +55,7 @@ spec:
         - sh
         - -c
         - >-
-          jq -s -c '{"servers": [{"port": "${kafkaJmxPort}","host":"localhost","alias":"${alias}", "queries":map( {"outputWriters": [{"@class":"com.googlecode.jmxtrans.model.output.InfluxDbWriterFactory","url":"${influxUrl}","database":"${influxDatabase}","retentionPolicy":"${retentionPolicy}","createDatabase":false,"username":"${influxUser}","password":"${influxPass}"}], "obj": .obj, "attr": .attr, "resultAlias": .resultAlias})}]}'
+          jq -s -c '{"servers": [{"port": "${kafkaJmxPort}","host":"localhost","alias":"${alias}", "queries":map( {"outputWriters": [{"@class":"com.googlecode.jmxtrans.model.output.InfluxDbWriterFactory","url":"${influxUrl}","database":"${influxDatabase}","createDatabase":false,"username":"${influxUser}","password":"${influxPass}"}], "obj": .obj, "attr": .attr, "resultAlias": .resultAlias})}]}'
           /metrics-input/metrics.json > /jmxtrans-input/kafka.json
       containers:
         - name: kafka
@@ -78,7 +78,6 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 9092
-            initialDelaySeconds: 30
           volumeMounts:
             - {name: data,    mountPath: /var/lib/kafka }
             - {name: tmp,    mountPath: /tmp }
@@ -91,9 +90,9 @@ spec:
           - { name: "HOST_NAME",                 valueFrom: { fieldRef: { fieldPath: "spec.nodeName"                        }}}
           - { name: "KAFKA_JMX_PORT",            value: "9010"                                                                }
           - { name: "INFLUXDB_DATABASE",         value: "kafka"                                                               }
-          - { name: "INFLUXDB_HOST",             value: "http://influxdb:8086"                                                }
+          - { name: "INFLUXDB_HOST",             value: "http://influxdb"                                                     }
           - { name: "INFLUXDB_USER",             value: "jeroen"                                                              }
-          - { name: "INFLUXDB_PASSWORD",         valueFrom: { secretKeyRef: { name: influxdb-secret, key: influxdb-password }}}
+          - { name: "INFLUXDB_PASSWORD",         valueFrom: { secretKeyRef: { name: influxdb-secret, key: user-password     }}}
           volumeMounts:
             - name: jmxtrans-input
               mountPath: /var/lib/jmxtrans
