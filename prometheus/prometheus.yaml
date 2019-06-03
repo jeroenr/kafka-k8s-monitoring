@@ -21,15 +21,13 @@ data:
     - job_name: kubernetes-services
       kubernetes_sd_configs:
       - role: service
-        api_server: https://ui.xaas.pl.ing.net
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        api_server: https://kubernetes.default.svc
         tls_config:
-          ca_file: /etc/certs/site.crt
-          cert_file: /etc/certs/site.crt
-          key_file: /etc/certs/site.key
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         namespaces:
           names:
-          - ${NAMESPACE}
+          - itnext
       metrics_path: /probe
       params:
         module:
@@ -58,15 +56,13 @@ data:
     - job_name: kubernetes-pods
       kubernetes_sd_configs:
       - role: pod
-        api_server: https://ui.xaas.pl.ing.net
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        api_server: https://kubernetes.default.svc
         tls_config:
-          ca_file: /etc/certs/site.crt
-          cert_file: /etc/certs/site.crt
-          key_file: /etc/certs/site.key
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         namespaces:
           names:
-          - ${NAMESPACE}
+          - itnext
       relabel_configs:
       - action: keep
         regex: true
@@ -103,22 +99,55 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: prometheus
+  namespace: itnext
   labels:
     app: prometheus
+    kubernetes.io/cluster-service: "true"
 ---
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
 metadata:
   name: prometheus
   labels:
-    app: prometheus
+    kubernetes.io/cluster-service: "true"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    kubernetes.io/cluster-service: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: view # built-in view Role
+  name: prometheus
 subjects:
-  - kind: ServiceAccount
-    name: prometheus
+- kind: ServiceAccount
+  name: prometheus
+  namespace: itnext
 ---
 kind: Deployment
 apiVersion: apps/v1
