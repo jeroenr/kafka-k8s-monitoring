@@ -1,0 +1,201 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: prometheus
+  name: prometheus
+data:
+  prometheus.yml: |
+    global:
+      evaluation_interval: 1m
+      scrape_interval: 1m
+      scrape_timeout: 10s
+    rule_files:
+    - /etc/config/rules
+    - /etc/config/alerts
+    scrape_configs:
+    - job_name: prometheus
+      static_configs:
+      - targets:
+        - localhost:9090
+    - job_name: kubernetes-services
+      kubernetes_sd_configs:
+      - role: service
+        api_server: https://ui.xaas.pl.ing.net
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /etc/certs/site.crt
+          cert_file: /etc/certs/site.crt
+          key_file: /etc/certs/site.key
+        namespaces:
+          names:
+          - ${NAMESPACE}
+      metrics_path: /probe
+      params:
+        module:
+        - http_2xx
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_probe
+      - source_labels:
+        - __address__
+        target_label: __param_target
+      - replacement: blackbox
+        target_label: __address__
+      - source_labels:
+        - __param_target
+        target_label: instance
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels:
+        - __meta_kubernetes_namespace
+        target_label: kubernetes_namespace
+      - source_labels:
+        - __meta_kubernetes_service_name
+        target_label: kubernetes_name
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+      - role: pod
+        api_server: https://ui.xaas.pl.ing.net
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /etc/certs/site.crt
+          cert_file: /etc/certs/site.crt
+          key_file: /etc/certs/site.key
+        namespaces:
+          names:
+          - ${NAMESPACE}
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+      - source_labels: 
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: metrics
+      - action: replace
+        regex: (.+)
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_namespace
+        target_label: kubernetes_namespace
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_pod_name
+        target_label: kubernetes_pod_name
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view # built-in view Role
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: prometheus
+spec:
+  template:
+    metadata:
+      labels:
+        name: prometheus
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9913'
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 5
+      serviceAccountName: prometheus
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.9.0
+        imagePullPolicy: "IfNotPresent"
+        args:
+        - --config.file=/etc/config/prometheus.yml
+        - --storage.tsdb.path=/prometheus-data
+        - --web.console.libraries=/etc/prometheus/console_libraries
+        - --web.console.templates=/etc/prometheus/consoles
+        - --web.enable-lifecycle
+        ports:
+          - containerPort: 9090
+            protocol: TCP
+        resources:
+          requests:
+            memory: "256Mi"
+          limits:
+            memory: "1Gi"
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/config
+          - name: prometheus-data
+            mountPath: /prometheus-data
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus
+        - name: prometheus-data
+          emptyDir: {}
+  replicas: 1
+  selector:
+    matchLabels:
+      name: prometheus
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    name: prometheus
+spec:
+  ports:
+    - name: "prometheus"
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
+  selector:
+    name: prometheus
+  sessionAffinity: None
+  type: ClusterIP

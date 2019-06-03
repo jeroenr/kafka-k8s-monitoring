@@ -1,1 +1,22 @@
 # kafka-k8s-monitoring
+
+## Initial setup
+`kubectl create ns playground`
+
+`kubectl -n playground apply -f config`
+`kubectl -n playground apply -f setup`
+
+## Grafana
+
+`kubectl -n playground port-forward $(kubectl -n playground get po -lname=grafana -o jsonpath="{.items[0].metadata.name}") 3000:3000`
+
+Add datasource named "influxdb-kafka"
+
+## Consuming sample data
+
+`kubectl -n playground apply -f job`
+`kubectl -n playground apply -f consumer`
+
+## Prometheus
+
+`kubectl -n itnext port-forward $(kubectl -n itnext get po -lname=prometheus -o jsonpath="{.items[0].metadata.name}") 9090:9090`
