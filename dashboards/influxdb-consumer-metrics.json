@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1559589168372,
+  "iteration": 1559676468215,
   "links": [],
   "panels": [
     {
@@ -1268,7 +1268,7 @@
       },
       "gridPos": {
         "h": 2,
-        "w": 6,
+        "w": 24,
         "x": 0,
         "y": 35
       },
@@ -1302,6 +1302,13 @@
       ],
       "repeat": "Hostname",
       "repeatDirection": "h",
+      "scopedVars": {
+        "Hostname": {
+          "selected": true,
+          "text": "orders-consumer-65d857559f-wtgl7",
+          "value": "orders-consumer-65d857559f-wtgl7"
+        }
+      },
       "sparkline": {
         "fillColor": "rgba(31, 118, 189, 0.18)",
         "full": false,
@@ -1377,7 +1384,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 35
+        "y": 37
       },
       "id": 12,
       "isNew": true,
@@ -1490,33 +1497,7 @@
   "style": "dark",
   "tags": [],
   "templating": {
-    "list": [
-      {
-        "allValue": null,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": "influxdb-kafka",
-        "definition": "SHOW TAG VALUES WITH KEY = \"hostname\" WHERE time >= now() - 1h",
-        "hide": 0,
-        "includeAll": true,
-        "label": null,
-        "multi": true,
-        "name": "Hostname",
-        "options": [],
-        "query": "SHOW TAG VALUES WITH KEY = \"hostname\" WHERE time >= now() - 1h",
-        "refresh": 1,
-        "regex": "/kafka-mirrormaker.*/",
-        "skipUrlSync": false,
-        "sort": 2,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-1h",
@@ -1548,7 +1529,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Consumer Metrics",
+  "title": "Kafka Consumer Metrics (InfluxDB)",
   "uid": "b49SoXjiz",
-  "version": 2
+  "version": 5
 }

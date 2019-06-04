@@ -15,8 +15,12 @@ Add datasource named "influxdb-kafka"
 ## Consuming sample data
 
 `kubectl -n playground apply -f job`
+
+### Checking we are getting data
+`kubectl -n playground run --rm -it kafkacatjob --image=solsson/kafkacat --restart=OnFailure --command -- kafkacat -C -b kafka -t orders -o -10 -e`
+
 `kubectl -n playground apply -f consumer`
 
 ## Prometheus
 
-`kubectl -n itnext port-forward $(kubectl -n itnext get po -lname=prometheus -o jsonpath="{.items[0].metadata.name}") 9090:9090`
+`kubectl -n playground port-forward $(kubectl -n playground get po -lname=prometheus -o jsonpath="{.items[0].metadata.name}") 9090:9090`

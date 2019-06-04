@@ -1,6 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: console-consumer-jmxexporter-config
+data:
+  config.yml: |+
+    ---
+    hostPort: localhost:9010
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: consumer-jmxtrans-config
 data:
   metrics.json: |+
@@ -25,6 +34,7 @@ metadata:
   name: kafka-consumer
   labels:
     app: kafka-consumer
+    name: kafka-consumer
 spec:
   replicas: 1
   selector:
@@ -34,6 +44,9 @@ spec:
     metadata:
       labels:
         app: kafka-consumer
+        name: kafka-consumer
+      annotations:
+        prometheus.io/scrape: 'true'
     spec:
       initContainers:
       - name: jmxtrans-init
@@ -84,8 +97,19 @@ spec:
               mountPath: /boot.sh
               subPath: boot.sh
               readOnly: true
+        - name: "jmx-exporter"
+          image: sscaling/jmx-prometheus-exporter
+          ports:
+           - { containerPort: 5556, name: metrics, protocol: TCP }
+          env:
+           - { name: JVM_OPTS,                    value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=1" }
+          volumeMounts:
+           - name: console-consumer-jmxexporter-config
+             mountPath: /opt/jmx_exporter/config.yml
+             subPath: config.yml
       volumes:
         - { name: tmp,    emptyDir: {} }
         - { name: vartmp, emptyDir: {} }
         - { name: jmxtrans-input,   emptyDir: {} }
+        - { name: console-consumer-jmxexporter-config, configMap: { name: console-consumer-jmxexporter-config, defaultMode: 0744 } }
         - { name: consumer-jmxtrans-config, configMap: { name: consumer-jmxtrans-config, defaultMode: 0744 } }

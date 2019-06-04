@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 3,
-  "iteration": 1559589356608,
+  "id": 1,
+  "iteration": 1559676738537,
   "links": [],
   "panels": [
     {
@@ -1533,7 +1533,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Kafka Consumer Metrics",
+  "title": "Kafka Consumer Metrics (Prometheus)",
   "uid": "b49SoXjizw43",
-  "version": 1
+  "version": 2
 }
