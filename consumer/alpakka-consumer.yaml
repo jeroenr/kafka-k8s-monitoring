@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-consumer-jmxexporter-config
+data:
+  config.yml: |+
+    ---
+    hostPort: localhost:9999
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-consumer-jmxtrans-config
+data:
+  metrics.json: |+
+    {"obj": "kafka.consumer:type=consumer-fetch-manager-metrics,client-id=*", "attr": ["records-lag-max","fetch-size-avg","fetch-size-max", "bytes-consumed-rate", "records-per-request-avg", "records-consumed-rate", "fetch-rate", "fetch-latency-avg", "fetch-latency-max", "fetch-throttle-time-avg", "fetch-throttle-time-max"], "resultAlias": "mmConsumerFetchMetrics"}
+    {"obj": "kafka.consumer:type=consumer-fetch-manager-metrics,client-id=*,topic=*", "attr": ["fetch-size-avg","fetch-size-max", "bytes-consumed-rate", "records-per-request-avg", "records-consumed-rate"], "resultAlias": "mmConsumerPerTopicFetchMetrics"}
+    {"obj": "kafka.consumer:type=consumer-coordinator-metrics,client-id=*", "attr": ["assigned-partitions","commit-latency-avg", "commit-latency-max", "commit-rate", "join-rate", "join-time-avg", "join-time-max","sync-rate","sync-time-avg","sync-time-max","heartbeat-rate","heartbeat-response-time-max","last-heartbeat-seconds-ago"], "resultAlias": "mmConsumerGroupMetrics"}
+    {"obj": "kafka.consumer:type=consumer-metrics,client-id=*", "attr": ["request-rate", "response-rate", "incoming-byte-rate", "outgoing-byte-rate"], "resultAlias": "mmConsumerRequestMetrics"}
+    {"obj": "kafka.consumer:type=consumer-metrics,client-id=*", "attr": ["connection-count","connection-creation-rate","connection-close-rate", "io-ratio", "io-time-ns-avg","io-wait-ratio","select-rate","io-wait-time-ns-avg"], "resultAlias": "mmConsumerConnectionMetrics"}
+    {"obj": "kafka.consumer:type=consumer-node-metrics,client-id=*,node-id=*", "attr": ["request-size-max","request-size-avg","request-rate", "response-rate", "incoming-byte-rate", "outgoing-byte-rate"], "resultAlias": "mmConsumerPerBrokerMetrics"}
+  boot.sh: |+
+    #!/bin/sh
+
+    set -e
+    set -x
+
+    export JMXTRANS_OPTS="$JMXTRANS_OPTS -Dlogback.configurationFile=file:///${JMXTRANS_HOME}/conf/logback.xml -DkafkaJmxPort=$KAFKA_JMX_PORT -Dalias=$POD_NAME -DinfluxUrl=$INFLUXDB_HOST -DinfluxDatabase=$INFLUXDB_DATABASE -DinfluxUser=$INFLUXDB_USER -DinfluxPass=$INFLUXDB_PASSWORD"
+    exec java $JAVA_OPTS $JMXTRANS_OPTS -jar $JAR_FILE -e -j $JSON_DIR -s $SECONDS_BETWEEN_RUNS -c $CONTINUE_ON_ERROR
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-consumer
+spec:
+  template:
+    metadata:
+      labels:
+        name: orders-consumer
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 5
+      initContainers:
+      - name: jmxtrans-init
+        image: realguess/jq:1.4
+        volumeMounts:
+        - name: orders-consumer-jmxtrans-config
+          mountPath: /metrics-input/metrics.json
+          subPath: metrics.json
+        - name: jmxtrans-input
+          mountPath: /jmxtrans-input
+        command:
+        - sh
+        - -c
+        - >-
+          jq -s -c '{"servers": [{"port": "${kafkaJmxPort}","host":"localhost","alias":"${alias}", "queries":map( {"outputWriters": [{"@class":"com.googlecode.jmxtrans.model.output.InfluxDbWriterFactory","url":"${influxUrl}","database":"${influxDatabase}","createDatabase":false,"username":"${influxUser}","password":"${influxPass}"}], "obj": .obj, "attr": .attr, "resultAlias": .resultAlias})}]}'
+          /metrics-input/metrics.json > /jmxtrans-input/kafka.json
+      containers:
+        - name: orders-consumer
+          image: jeroenrosenberg/order-consumer:0.1.0-SNAPSHOT
+          imagePullPolicy: Always
+          resources:
+            requests: { memory: "300Mi" }
+            limits:   { memory: "300Mi" }
+          env:
+            - { name: "JAVA_OPTS",                            value: "-Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false" }
+        - name: "jmx-exporter"
+          image: sscaling/jmx-prometheus-exporter
+          ports:
+           - { containerPort: 5556, name: metrics, protocol: TCP }
+          env:
+           - { name: JVM_OPTS,                    value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=1" }
+          volumeMounts:
+           - name: orders-consumer-jmxexporter-config
+             mountPath: /opt/jmx_exporter/config.yml
+             subPath: config.yml
+        - name: "jmxtrans"
+          image: "jmxtrans/jmxtrans"
+          command: ["/boot.sh"]
+          env:
+          - { name: "POD_NAME",                  valueFrom: { fieldRef: { fieldPath: "metadata.name"                        }}}
+          - { name: "HOST_NAME",                 valueFrom: { fieldRef: { fieldPath: "spec.nodeName"                        }}}
+          - { name: "KAFKA_JMX_PORT",            value: "9999"                                                                }
+          - { name: "INFLUXDB_DATABASE",         value: "kafka"                                                               }
+          - { name: "INFLUXDB_HOST",             value: "http://influxdb"                                                     }
+          - { name: "INFLUXDB_USER",             value: "jeroen"                                                              }
+          - { name: "INFLUXDB_PASSWORD",         valueFrom: { secretKeyRef: { name: influxdb-secret, key: user-password     }}}
+          volumeMounts:
+            - name: jmxtrans-input
+              mountPath: /var/lib/jmxtrans
+              readOnly: true
+            - name: orders-consumer-jmxtrans-config
+              mountPath: /boot.sh
+              subPath: boot.sh
+              readOnly: true
+      volumes:
+        - { name: orders-consumer-jmxexporter-config, configMap: { name: orders-consumer-jmxexporter-config, defaultMode: 0744 }}
+        - { name: jmxtrans-input,   emptyDir: {} }
+        - { name: orders-consumer-jmxtrans-config, configMap: { name: orders-consumer-jmxtrans-config, defaultMode: 0744 } }
+  replicas: 1
+  selector:
+    matchLabels:
+      name: orders-consumer
