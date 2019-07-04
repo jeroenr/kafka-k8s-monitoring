@@ -3,14 +3,14 @@
 ## Initial setup
 `kubectl create ns playground`
 
-`kubectl -n playground apply -f config`
 `kubectl -n playground apply -f setup`
+`kubectl -n playground apply -f reporting-backends`
 
 ## Grafana
 
 `kubectl -n playground port-forward $(kubectl -n playground get po -lname=grafana -o jsonpath="{.items[0].metadata.name}") 3000:3000`
 
-Add datasource named "influxdb-kafka"
+Add datasource named "prometheus"
 
 ## Consuming sample data
 
