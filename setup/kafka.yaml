@@ -50,6 +50,8 @@ spec:
     metadata:
       labels:
         app: kafka
+      annotations:
+        prometheus.io/scrape: 'true'
     spec:
       containers:
         - name: kafka
