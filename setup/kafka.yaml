@@ -67,7 +67,6 @@ spec:
             requests: { memory: "2Gi" }
             limits:   { memory: "2Gi" }
           ports:
-            - { name: jmx-port, containerPort: 9010, protocol: TCP }
             - { name: broker-port, containerPort: 9092, protocol: TCP }
           readinessProbe:
             tcpSocket:
