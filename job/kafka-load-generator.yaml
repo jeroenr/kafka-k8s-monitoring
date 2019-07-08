@@ -13,9 +13,11 @@ spec:
             image: solsson/kafkacat-curl
             args: [
               '-c',
-              'COUNT=$((RANDOM * 200 / 32768)); curl -k -s "https://api.mockaroo.com/api/d5a195e0?key=4bf22500&count=$COUNT" | kafkacat -P -b kafka:9092 -t "$TOPIC" -p 0 -c "$COUNT"'
+              'COUNT=$((RANDOM * 200 / 32768)); curl -k -s "$ENDPOINT?key=$KEY&count=$COUNT" | kafkacat -P -b kafka:9092 -t "$TOPIC" -p 0 -c "$COUNT"'
             ]
             command: ["/bin/bash"]
             env:
-            - { name: TOPIC,                      value: "orders" }
+            - { name: TOPIC,    value: "orders" }
+            - { name: ENDPOINT, value: "https://api.mockaroo.com/api/d5a195e0" }
+            - { name: KEY,      value: "4bf22500" }
           restartPolicy: OnFailure
